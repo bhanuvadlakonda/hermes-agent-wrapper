@@ -1,0 +1,65 @@
+name: Check Hermes image
+
+on:
+  schedule:
+    - cron: "15 22 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve Docker Hub digest
+        id: digest
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="$(curl -fsSL 'https://auth.docker.io/token?service=registry.docker.io&scope=repository:nousresearch/hermes-agent:pull' | jq -r '.token')"
+          digest="$(
+            curl -fsSI \
+              -H "Authorization: Bearer ${token}" \
+              -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.v2+json' \
+              'https://registry-1.docker.io/v2/nousresearch/hermes-agent/manifests/main' \
+            | awk -F': ' 'tolower($1)=="docker-content-digest"{gsub("\r","",$2); print $2; exit}'
+          )"
+          test -n "${digest}"
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+
+      - name: Update pinned digest
+        shell: python
+        run: |
+          import os
+          import pathlib
+          import re
+
+          digest = os.environ["DIGEST"]
+          dockerfile = pathlib.Path("Dockerfile")
+          text = dockerfile.read_text()
+          pattern = r"^FROM nousresearch/hermes-agent:main(?:@sha256:[a-f0-9]+)?$"
+          replacement = f"FROM nousresearch/hermes-agent:main@{digest}"
+          updated = re.sub(pattern, replacement, text, count=1, flags=re.MULTILINE)
+          if updated == text and replacement not in text:
+              raise SystemExit("Dockerfile base image line not found")
+          dockerfile.write_text(updated)
+          pathlib.Path(".hermes-image-digest").write_text(digest + "\n")
+        env:
+          DIGEST: ${{ steps.digest.outputs.digest }}
+
+      - name: Open update PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: codex/hermes-agent-image
+          commit-message: Update Hermes Agent image digest
+          title: Update Hermes Agent image digest
+          body: |
+            Updates the pinned `nousresearch/hermes-agent:main` digest used by the Railway wrapper.
+
+            Merge this PR to let Railway build and deploy the latest upstream Hermes image while preserving the protected dashboard proxy wrapper.
+          labels: dependencies
+          delete-branch: true
