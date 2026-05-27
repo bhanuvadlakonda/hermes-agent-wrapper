@@ -1,0 +1,6 @@
+.git
+.github
+codex-output
+README.md
+*.log
+node_modules
