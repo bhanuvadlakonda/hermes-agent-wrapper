@@ -96,8 +96,22 @@ function basicAuthorized(req) {
   return safeEqual(decoded, `${username}:${password}`);
 }
 
+function dashboardTokenAuthorized(req) {
+  const url = new URL(req.url || "/", target);
+  if (!url.pathname.startsWith("/api/")) {
+    return false;
+  }
+
+  const bearer = req.headers.authorization || "";
+  if (typeof bearer === "string" && bearer.startsWith("Bearer ") && bearer.length > "Bearer ".length) {
+    return true;
+  }
+
+  return Boolean(url.searchParams.get("token"));
+}
+
 function authorized(req) {
-  return validCookie(req) || basicAuthorized(req);
+  return validCookie(req) || basicAuthorized(req) || dashboardTokenAuthorized(req);
 }
 
 function setAuthCookie(res) {
