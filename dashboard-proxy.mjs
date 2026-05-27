@@ -242,6 +242,7 @@ server.on("upgrade", (req, socket, head) => {
   const upstream = net.connect(Number(target.port || 80), target.hostname, () => {
     const headers = proxyHeaders(req);
     headers.connection = "Upgrade";
+    headers.origin = `${target.protocol}//${target.host}`;
     if (req.headers.upgrade) {
       headers.upgrade = req.headers.upgrade;
     }
