@@ -42,6 +42,10 @@ function signedCookieValue() {
   return `${issuedAt}.${sign(issuedAt)}`;
 }
 
+function authCookieHeader() {
+  return `${cookieName}=${encodeURIComponent(signedCookieValue())}; Max-Age=${cookieMaxAgeSeconds}; Path=/; HttpOnly; Secure; SameSite=Lax`;
+}
+
 function validCookie(req) {
   if (!credentialsConfigured()) {
     return false;
@@ -103,8 +107,25 @@ function setAuthCookie(res) {
 
   res.setHeader(
     "set-cookie",
-    `${cookieName}=${encodeURIComponent(signedCookieValue())}; Max-Age=${cookieMaxAgeSeconds}; Path=/; HttpOnly; Secure; SameSite=Lax`,
+    authCookieHeader(),
   );
+}
+
+function appendAuthCookie(headers) {
+  if (!credentialsConfigured()) {
+    return headers;
+  }
+
+  const cookie = authCookieHeader();
+  const existing = headers["set-cookie"];
+  if (!existing) {
+    headers["set-cookie"] = cookie;
+  } else if (Array.isArray(existing)) {
+    headers["set-cookie"] = [cookie, ...existing];
+  } else {
+    headers["set-cookie"] = [cookie, existing];
+  }
+  return headers;
 }
 
 function writeAuthRequired(res) {
@@ -173,6 +194,9 @@ const server = http.createServer((req, res) => {
         if (hopByHopHeaders.has(name.toLowerCase())) {
           delete responseHeaders[name];
         }
+      }
+      if (basicAuthorized(req)) {
+        appendAuthCookie(responseHeaders);
       }
       res.writeHead(upstreamRes.statusCode || 502, responseHeaders);
       upstreamRes.pipe(res);
