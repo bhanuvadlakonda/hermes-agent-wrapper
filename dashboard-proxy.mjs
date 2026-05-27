@@ -129,7 +129,9 @@ function proxyHeaders(req) {
     }
   }
 
-  delete headers.authorization;
+  if (typeof headers.authorization === "string" && headers.authorization.startsWith("Basic ")) {
+    delete headers.authorization;
+  }
   headers.host = target.host;
   headers["x-forwarded-host"] = req.headers.host || "";
   headers["x-forwarded-proto"] = "https";
