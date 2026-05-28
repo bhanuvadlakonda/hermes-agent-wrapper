@@ -1,4 +1,4 @@
-FROM nousresearch/hermes-agent:main
+FROM nousresearch/hermes-agent:main@sha256:35c8784e9acd109e2a4dbdc8c528dccf609a9636ddcced2ea8f1d85ccc9f39d8
 
 RUN uv pip install --python /opt/hermes/.venv/bin/python --no-cache "python-telegram-bot[webhooks]==22.6" && \
     /opt/hermes/.venv/bin/python -c "import openai, pathlib; p = pathlib.Path(openai.__file__).parent / 'lib/_parsing/_responses.py'; text = p.read_text(); old = 'for output in response.output:'; new = 'for output in (response.output or []):'; assert old in text or new in text, 'OpenAI Responses parser target line not found'; p.write_text(text.replace(old, new, 1) if new not in text else text)"
