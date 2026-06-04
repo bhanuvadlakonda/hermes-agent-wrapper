@@ -1,3 +1,5 @@
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/qUdAL5?referralCode=bhanuv3&utm_medium=integration&utm_source=template&utm_campaign=generic)
+
 # Hermes Direct Railway Wrapper
 
 Railway deploy wrapper for `nousresearch/hermes-agent`.
